@@ -6,22 +6,19 @@ Rimozione file compilati: make clean
 Eseguibili dopo la compilazione: pseder, preceiver, Ritardatore
 
 Disposizione cartelle:
-/root/
-  ./src/
-    ./psender.c
-    ./preceiver.c
-    ./utility.c
-    ./utility.h
+  ./src/psender.c
+  ./src/preceiver.c
+  ./src/utility.c
+  ./src/utility.h
 
-  ./ritardatore/
-    ./Makefile
-    ./Ritardatore.c
-    ./util.c
-    ./util.h
+  ./ritardatore/Makefile
+  ./ritardatore/Ritardatore.c
+  ./ritardatore/util.c
+  ./ritardatore/util.h
 
   ./Makefile
   ./Readme.md
-  
+
 
 Guida per testare mediante netcat:
 0)  lanciare 5 terminali!
