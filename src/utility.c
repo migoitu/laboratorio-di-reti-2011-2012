@@ -152,19 +152,19 @@ int send_tcp (int sockfd, char *msg, int len) {
     if (ris == n) {ris = 0; break;} /* se i byte che deve spedire sono uguali a quelli spediti esce */
     
     /* se e' successo un errore grave esce */
-    if (ris < 0 && errno != 11 && errno != EINTR && errno != EAGAIN) break;
+    if ((ris < 0) && (errno != 11) && (errno != EINTR) && (errno != EAGAIN)) break;
   
   }while(1);
   
-  if(ris<0) {
+  if(ris == SOCKET_ERROR) {
 
-    if(errno == ECONNRESET || errno == EPIPE) {
+    if((errno == ECONNRESET) || (errno == EPIPE)) {
       printf("\nErrore write [morte receiver]: CONNESSIONE INTERROTTA\n");
-      return 1;
+      return -2;
     }
     else{
-      perror("write() failed:");
-      return 2;
+      printf("write() failed: errno %d ", errno);
+      return SOCKET_ERROR;
     }
   }
 

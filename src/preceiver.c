@@ -52,7 +52,7 @@ int main (int argc, char *argv[]) {
 
 
   /* vettore */
-  int prima_ricezione, flag_null, fine, idmax = 0;
+  int flag, flag_null, fine, idmax = 0;
   int i;
   int last_pkt = 0;
   INFO info;
@@ -78,14 +78,14 @@ int main (int argc, char *argv[]) {
     porta_dest = atoi(argv[4]);
   }
   else {
-    printf("argomenti passati incompleti. Sintassi:\n"); 
-    printf("./preceiver ip_ricevente porta_locale porta_mittente porta_destinatario\n");
+    printf("argomenti passati non completi\n"); 
+    printf("./proxyreceiver ip_ricevente porta_locale porta_mittente porta_destinatario\n");
     exit (1);
   }
 
   
   init_info(&info);
-
+  
   /* creazione socket udp */
   ris = tcudp_setting(&udpfd, porta_locale_udp ,SOCK_DGRAM);
   if (!ris) {
@@ -93,6 +93,7 @@ int main (int argc, char *argv[]) {
     fflush(stdout);
     exit(1);
   }
+
 
   /* creazione socket tcp */
   ris = tcudp_setting (&tcpfd, 0, SOCK_STREAM); 
@@ -103,7 +104,7 @@ int main (int argc, char *argv[]) {
   }
 
 
-  
+
   /* preparazione dati ricevente */
   memset ( &ricevente, 0, sizeof(ricevente) );
   ricevente.sin_family   =  AF_INET;
@@ -121,10 +122,11 @@ int main (int argc, char *argv[]) {
   printf ("connesso!\n");
   fflush(stdout);
 
-  /* sbloccaggio socket */
+/* sbloccaggio socket */
   sblocca (&udpfd);
   sblocca (&tcpfd);
-
+  
+  
   /* settaggio time select 120secondi */
   attendi.tv_sec = 120;
   attendi.tv_usec = 0;
@@ -154,12 +156,12 @@ int main (int argc, char *argv[]) {
         ricevuti = recvfrom (udpfd, buf, BUFSIZE, 0, (struct sockaddr*)&mitt, &size_mitt);
 
         if (ricevuti > 0) {
-          prima_ricezione = 1;
+          flag = 1;
           if (info.ini == 0.0) info.ini = time(NULL);
           
           /* salvataggio informazioni mittente */
           sprintf((char*)ip_mittente,"%s",inet_ntoa(mitt.sin_addr));
-          porta_mittente_temp = ntohs(mitt.sin_port);
+          porta_mittente_temp = mitt.sin_port;
 
           /* ricezione datagram udp di tipo B */
           if (((PACCO*)buf)->tipo == 'B') {
@@ -211,7 +213,7 @@ int main (int argc, char *argv[]) {
 
           /* ricezione datagram di tipo ICMP */
           if (((PACCO*)buf)->tipo == 'I') {
-            info.icmp = info.icmp + 1;
+            
             spkt_icmpack (buf, &icmpack);
 
             if (icmpack.id_pkt == RIMANDA) {
@@ -226,10 +228,10 @@ int main (int argc, char *argv[]) {
             }
 
             if ((icmpack.id_pkt) < RIMANDA) {
-
+              info.icmp = info.icmp + 1;
               /* cambia porta per non riavere un altro icmp */
               porta_mittente_temp = scegli_door(porta_mitt , porta_mittente_temp);
-              printf("%s[ICMP]: %d | %c | %d | %s\n", VIOLA, icmpack.id, icmpack.tipo, icmpack.id_pkt,BIANCO);              
+              printf("%s[ICMP]: %d | %c | %d | %s | ", VIOLA, icmpack.id, icmpack.tipo, icmpack.id_pkt,BIANCO);              
 
               ack.id = htonl(icmpack.id_pkt);
               ack.tipo = 'B';
@@ -267,7 +269,7 @@ int main (int argc, char *argv[]) {
 
       if (fine == 1) break;
 
-      if (prima_ricezione == 1) {
+      if (flag == 1) {
         attendi.tv_sec = 1;
         attendi.tv_usec = 0;
         
@@ -290,8 +292,8 @@ int main (int argc, char *argv[]) {
             ris = send_ack (dest, ip_mittente, porta_mittente_temp, udpfd, ack);
             if (!ris) { printf("spedizione ack non riuscita"); }
 
-            printf("%s[RIMANDA]: %d | %d | %c | %d | %d | %s\n",
-            CIANOC, ntohl(ack.id), ntohl(ack.id_pkt), ack.tipo, ntohl(ack.id_pkt), porta_mittente_temp, BIANCO);
+            printf("%s[RIMANDA]: %d | %d | %c | %d | %d | %s | %s \n",
+            CIANOC, ntohl(ack.id), ntohl(ack.id_pkt), ack.tipo, ntohl(ack.id_pkt), porta_mittente_temp, ip_mittente, BIANCO);
             break;
           }
 
@@ -301,7 +303,7 @@ int main (int argc, char *argv[]) {
             printf("%s[TCP]: %d | %s", BLUC, pacco->id, BIANCO);
             ris = send_tcp (tcpfd, pacco->msg, pacco->msg_size);
             switch (ris) { 
-              case 1:
+              case -2:
                 /* se la spedizione non va a buon fine il receiver e' morto. */
                 printf ("%sClient Ricevente ha smesso di esistere! %s\n", ROSSOC, BIANCO);
               
@@ -314,7 +316,8 @@ int main (int argc, char *argv[]) {
                 }
               break;
 
-              case 2: printf(" write(): failed.\n"); exit(1);
+              case SOCKET_ERROR: printf(" write(): failed.\n"); exit(1);
+              
               default: 
                 free(pacco);
                 vett[i] = NULL;
