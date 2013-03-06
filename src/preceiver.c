@@ -52,7 +52,7 @@ int main (int argc, char *argv[]) {
 
 
   /* vettore */
-  int flag, flag_null, fine, idmax = 0;
+  int primaRicezione, flag_null, fine, idmax = 0;
   int i;
   int last_pkt = 0;
   INFO info;
@@ -78,14 +78,14 @@ int main (int argc, char *argv[]) {
     porta_dest = atoi(argv[4]);
   }
   else {
-    printf("argomenti passati non completi\n"); 
-    printf("./proxyreceiver ip_ricevente porta_locale porta_mittente porta_destinatario\n");
+	printf("argomenti passati incompleti. Sintassi:\n"); 
+    printf("./preceiver ip_ricevente porta_locale porta_mittente porta_destinatario\n");
     exit (1);
   }
 
   
   init_info(&info);
-  
+
   /* creazione socket udp */
   ris = tcudp_setting(&udpfd, porta_locale_udp ,SOCK_DGRAM);
   if (!ris) {
@@ -94,7 +94,6 @@ int main (int argc, char *argv[]) {
     exit(1);
   }
 
-
   /* creazione socket tcp */
   ris = tcudp_setting (&tcpfd, 0, SOCK_STREAM); 
   if (!ris) {
@@ -102,8 +101,6 @@ int main (int argc, char *argv[]) {
     fflush(stdout);
     exit(1);
   }
-
-
 
   /* preparazione dati ricevente */
   memset ( &ricevente, 0, sizeof(ricevente) );
@@ -125,8 +122,7 @@ int main (int argc, char *argv[]) {
 /* sbloccaggio socket */
   sblocca (&udpfd);
   sblocca (&tcpfd);
-  
-  
+
   /* settaggio time select 120secondi */
   attendi.tv_sec = 120;
   attendi.tv_usec = 0;
@@ -156,12 +152,12 @@ int main (int argc, char *argv[]) {
         ricevuti = recvfrom (udpfd, buf, BUFSIZE, 0, (struct sockaddr*)&mitt, &size_mitt);
 
         if (ricevuti > 0) {
-          flag = 1;
+          primaRicezione = 1;
           if (info.ini == 0.0) info.ini = time(NULL);
           
           /* salvataggio informazioni mittente */
           sprintf((char*)ip_mittente,"%s",inet_ntoa(mitt.sin_addr));
-          porta_mittente_temp = mitt.sin_port;
+          porta_mittente_temp = ntohs(mitt.sin_port);
 
           /* ricezione datagram udp di tipo B */
           if (((PACCO*)buf)->tipo == 'B') {
@@ -269,7 +265,7 @@ int main (int argc, char *argv[]) {
 
       if (fine == 1) break;
 
-      if (flag == 1) {
+      if (primaRicezione == 1) {
         attendi.tv_sec = 1;
         attendi.tv_usec = 0;
         
@@ -292,8 +288,8 @@ int main (int argc, char *argv[]) {
             ris = send_ack (dest, ip_mittente, porta_mittente_temp, udpfd, ack);
             if (!ris) { printf("spedizione ack non riuscita"); }
 
-            printf("%s[RIMANDA]: %d | %d | %c | %d | %d | %s | %s \n",
-            CIANOC, ntohl(ack.id), ntohl(ack.id_pkt), ack.tipo, ntohl(ack.id_pkt), porta_mittente_temp, ip_mittente, BIANCO);
+            printf("%s[RIMANDA]: %d | %d | %c | %d | %s | %d | %s \n",
+            CIANOC, ntohl(ack.id), ntohl(ack.id_pkt), ack.tipo, ntohl(ack.id_pkt), ip_mittente, porta_mittente_temp, BIANCO);
             break;
           }
 
