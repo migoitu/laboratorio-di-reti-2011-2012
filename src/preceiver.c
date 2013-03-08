@@ -327,7 +327,7 @@ int main (int argc, char *argv[]) {
 
         }
         /* se pacco spedito = ultimo pacchetto */
-        if (count-1 == last_pkt) {
+        if ((last_pkt != 0) && (count-1 == last_pkt)) {
           ack.id = htonl(IDFINE);
           ack.tipo = 'B';
           ack.id_pkt = htonl(IDFINE);

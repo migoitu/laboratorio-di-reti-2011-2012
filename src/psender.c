@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
   /* vettore */
   PACCO *pacco, *fine = NULL;
   ICMPACK icmpack;
-  int primaRicezione = 0;
+  int primaRicezione, counter, finalCountdown = 0;
   time_t timer, timer_temp = 0;
   uint32_t id = 1;
   int inizio = 1; /* scansione vettore per rimandare */
@@ -163,12 +163,14 @@ int main(int argc, char *argv[]) {
 
     /* qualche socket si e' attivato */
     if(val_select > 0) {
+      attesa.tv_sec = 0;
+      attesa.tv_usec = 50000; /* decimo di secondo */
+      counter = 0;
 
+      
       /* RICEZIONE, IMPACCHETTAMENTO E SPEDIZIONE DEL TCP */
       if(FD_ISSET(newtcpfd, &reads)) {
-/**/        primaRicezione = 1;
-        attesa.tv_sec = 0;
-        attesa.tv_usec = 20000; /* decimo di secondo */
+        primaRicezione = 1;
         
         if ((letti = recv(newtcpfd, &buf, MSGSIZE, 0 )) >0) {
 
@@ -215,7 +217,7 @@ int main(int argc, char *argv[]) {
       /* REPARTO CONTROLLO DELLA RICEZIONE */
 
         /* Errno 11 = Resource temporarily unavailable */
-        if((letti<=0) && (errno!=EINTR && errno!=11)) {
+        if((letti<=0) && (errno!=EINTR)) {
 
           /* se legge 0 significa che il sender non esiste piu quindi avvisa il proxyreceiver della fine */
           if (letti == 0) {
@@ -272,6 +274,7 @@ int main(int argc, char *argv[]) {
           /* MESSAGGI DA PROXYRECEIVER */
 
           if (icmpack.tipo == 'B') {
+            finalCountdown = 0;
 
             /* pacchetto di tipo RIMANDA */
             if (icmpack.id >= RIMANDA) {
@@ -329,7 +332,6 @@ int main(int argc, char *argv[]) {
 
                 printf("%s[ACK]: %d | %c | %d |%s\n", VIOLA, icmpack.id, icmpack.tipo, icmpack.id_pkt, BIANCO);
 
-              
               }
             }
           }
@@ -368,31 +370,33 @@ int main(int argc, char *argv[]) {
 
     /* reparto spedizione pacchi */
     if(val_select == 0){
-
-      attesa.tv_sec = 0;
-      attesa.tv_usec = 50000;
-
-      if (timer == 0) time(&timer);
-	  else if ( ((timer_temp = time(NULL)) - timer) == 1) {
-		inizio = scan_null (vett, inizio, id-1);
-			
-		ris = multi_sendtcp (vett, inizio, id-1, dest, ip_dest, porta_mittente, udpfd, &info);
-		if(ris) {exit(1);}
-			
-		if(fine != NULL) {
-		  
-		  ris = send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *fine);
-		  if (!ris) { 
-			printf("send_udp(magic_pkt): andata a puttane\n"); 
-		  }
-		}
-	  }
-	  else if ( (timer_temp = time(NULL) - timer) == 10 ) {
       
-	    printf("[FINE]: Timeout proxy receiver scaduto!\n");
-	    break;
-		  
-	  }
+      attesa.tv_sec = 0;
+      attesa.tv_usec = 500000;
+      finalCountdown++;
+      
+      printf("counter = %d\n", counter);
+      if (counter == 2) {
+        counter = 0;
+        inizio = scan_null (vett, inizio, id-1);
+        
+        ris = multi_sendtcp (vett, inizio, id-1, dest, ip_dest, porta_mittente, udpfd, &info);
+        if(ris) {exit(1);}
+        
+        if(fine != NULL) {
+        
+          ris = send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *fine);
+          if (!ris) { 
+            printf("send_udp(magic_pkt): andata a puttane\n"); 
+          }
+        }
+      } else counter++;
+      
+      if(finalCountdown == 20) {
+        printf("[FINE]: Timeout proxy receiver scaduto!\n");
+            break;
+                  
+      }
     }
   }
   
