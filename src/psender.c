@@ -375,7 +375,6 @@ int main(int argc, char *argv[]) {
       attesa.tv_usec = 500000;
       finalCountdown++;
       
-      printf("counter = %d\n", counter);
       if (counter == 2) {
         counter = 0;
         inizio = scan_null (vett, inizio, id-1);

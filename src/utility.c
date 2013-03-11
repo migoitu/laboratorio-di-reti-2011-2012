@@ -191,7 +191,7 @@ int send_udp (struct sockaddr_in dest, char *ip_ricevente, unsigned short porta_
     ris = sendto (sockfd, &msg , sizeof(msg), 0, (struct sockaddr*)&dest, addr_size);
     if(ris==0) printf("spedizione nulla\n");break;
     
-    if(ris < 0 && errno != 11 && errno != EINTR && errno != EAGAIN) break;
+    if((ris < 0) && (errno != 11) && (errno != EINTR) && (errno != EAGAIN)) break;
     printf("ris sendto() = %d\n",ris);
   } while(ris>0);
   
