@@ -99,30 +99,16 @@ int main(int argc, char *argv[]) {
 
 
   /* creazione socket tcp */
-  ris = tcudp_setting (&tcpfd, porta_locale_tcp, SOCK_STREAM); 
-  if (!ris) { 
-    printf("prepara_udp(): andata a puttane\n"); 
-    fflush(stdout);
-    exit(1);
-  }
+  tcudp_setting (&tcpfd, porta_locale_tcp, SOCK_STREAM); 
 
   /* creazione socket udp */
-  ris = tcudp_setting (&udpfd, porta_locale_udp, SOCK_DGRAM);
-  if (!ris) { 
-    printf("prepara_udp(): andata a puttane\n"); 
-    fflush(stdout);
-    exit(1);
-  }
-
+  tcudp_setting (&udpfd, porta_locale_udp, SOCK_DGRAM);
+  
 
   /* ascolto */
   printf ("listen()\n");
   ris = listen(tcpfd, 1);
-  if (ris == SOCKET_ERROR)  {
-    perror ("listen() failed. \n");
-    fflush(stdout);
-    exit(1);
-  }
+  if (ris == SOCKET_ERROR) errore ("listen() failed",errno);
 
 
   /* accettazione */
@@ -131,15 +117,12 @@ int main(int argc, char *argv[]) {
 
   printf ("accept()\n");
   newtcpfd = accept(tcpfd, (struct sockaddr*) &cliente, &dim);
-  if (newtcpfd == SOCKET_ERROR) {
-    perror ("accept() failed. \n");
-    fflush(stdout);
-    exit(1);
-  }
-  else {
+  if (newtcpfd == SOCKET_ERROR) 
+    errore ("accept() failed", errno);
+  else
     printf("connessione da %s : %d\n", inet_ntoa(cliente.sin_addr), ntohs(cliente.sin_port) );
-    fflush(stdout);
-  }
+  
+  
 
 
   /* sbloccaggio socket */
@@ -194,12 +177,8 @@ int main(int argc, char *argv[]) {
           fflush(stdout);
 
           /* spedizione del pacchetto udp */
-          ris = send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *pacco);
-          if (!ris) { 
-            printf("send_udp(): andata a puttane\n");
-            fflush(stdout);
-            exit(1);
-          }
+          send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *pacco);
+          
           printf("%s[UDP]: %s | %d | %d | %c | %c | %d | %d |%s\n",
           GIALLO, ip_dest, porta_ricevente_temp, ntohl(pacco->id), pacco->tipo, pacco->ack, pacco->msg_size, (int)sizeof(*pacco), BIANCO);
           fflush(stdout);
@@ -238,10 +217,8 @@ int main(int argc, char *argv[]) {
             
             vett[0] = fine;
             
-            ris = send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *fine);
-            if (!ris) { 
-              printf("send_udp(magic_pkt): andata a puttane\n"); 
-            }
+            send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *fine);
+            
 
             printf("\n%s[MAGIC]: %s | %d | %d | %c | %c | %d | NULL |%s\n",
             VERDEC , ip_dest, porta_ricevente_temp, ntohl(fine->id), fine->tipo, fine->ack, id-1, BIANCO);
@@ -294,16 +271,10 @@ int main(int argc, char *argv[]) {
                 if (icmpack.id_pkt > id) printf("%spkt inesistente %s\n",ROSSOC,BIANCO);
                 else {
                   if (vett[icmpack.id_pkt] != NULL) { 
-                    ris = send_udp (dest, ip_dest, porta_ricevente_temp, udpfd, *(vett[icmpack.id_pkt]));
-                    if (ris == 2) {
-                      printf("send_udp(): rimanda andata a puttane\n"); 
-                    }
-                    else { printf("%spkt rispedito!%s\n", VERDEC, BIANCO); }
+                    send_udp (dest, ip_dest, porta_ricevente_temp, udpfd, *(vett[icmpack.id_pkt]));
+                    printf("%spkt rispedito!%s\n", VERDEC, BIANCO);
                   }
-                  else {
-                    printf ("%spkt gia consegnato!%s\n"
-                    ,ROSSOC, BIANCO);
-                  }
+                  else printf ("%spkt gia consegnato!%s\n",ROSSOC, BIANCO);
                 }
               }
             }
@@ -345,10 +316,7 @@ int main(int argc, char *argv[]) {
             
             printf("%s[ICMP]: %d | %c | %d | %d => %d |%s", VIOLA, icmpack.id, icmpack.tipo, icmpack.id_pkt, porta_mittente, porta_ricevente_temp, BIANCO);
             if (vett[icmpack.id_pkt] != NULL) {
-              ris = send_udp (dest, ip_dest, porta_ricevente_temp, udpfd, *(vett[icmpack.id_pkt]));
-              if (ris == 2) {
-                printf (" send_udp(): icmp fallita!\n");
-              }
+              send_udp (dest, ip_dest, porta_ricevente_temp, udpfd, *(vett[icmpack.id_pkt]));
               printf("%s pkt rispedito!%s\n",VERDEC, BIANCO);
             }
             
@@ -379,19 +347,17 @@ int main(int argc, char *argv[]) {
         counter = 0;
         inizio = scan_null (vett, inizio, id-1);
         
-        ris = multi_sendtcp (vett, inizio, id-1, dest, ip_dest, porta_mittente, udpfd, &info);
-        if(ris) {exit(1);}
-        
+        multi_sendtcp (vett, inizio, id-1, dest, ip_dest, porta_mittente, udpfd, &info);
+
         if(fine != NULL) {
         
-          ris = send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *fine);
-          if (!ris) { 
-            printf("send_udp(magic_pkt): andata a puttane\n"); 
-          }
+          send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *fine);
+
         }
       } else counter++;
       
-      if(finalCountdown == 20) {
+      /* 100 secondi */
+      if(finalCountdown == 200) {
         printf("[FINE]: Timeout proxy receiver scaduto!\n");
             break;
                   

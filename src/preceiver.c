@@ -87,20 +87,11 @@ int main (int argc, char *argv[]) {
   init_info(&info);
 
   /* creazione socket udp */
-  ris = tcudp_setting(&udpfd, porta_locale_udp ,SOCK_DGRAM);
-  if (!ris) {
-    printf("[UDP] tcudp_setting(): andata a puttane\n");
-    fflush(stdout);
-    exit(1);
-  }
+  tcudp_setting(&udpfd, porta_locale_udp ,SOCK_DGRAM);
 
   /* creazione socket tcp */
-  ris = tcudp_setting (&tcpfd, 0, SOCK_STREAM); 
-  if (!ris) {
-    printf("[TCP] tcudp_setting(): andata a puttane\n"); 
-    fflush(stdout);
-    exit(1);
-  }
+  tcudp_setting (&tcpfd, 0, SOCK_STREAM); 
+
 
   /* preparazione dati ricevente */
   memset ( &ricevente, 0, sizeof(ricevente) );
@@ -111,11 +102,7 @@ int main (int argc, char *argv[]) {
 
   printf ("connect() . . . \n");
   newtcpfd = connect(tcpfd, (struct sockaddr*) &ricevente, sizeof(ricevente));
-  if (newtcpfd == SOCKET_ERROR)  {
-    perror ("connect() failed");
-    fflush(stdout);
-    exit(1);
-  }
+  if (newtcpfd == SOCKET_ERROR) errore ("connect() failed", errno);
   printf ("connesso!\n");
   fflush(stdout);
 
@@ -191,8 +178,7 @@ int main (int argc, char *argv[]) {
               ack.tipo = 'B';
               ack.id_pkt = htonl(pacco->id);
 
-              ris = send_ack (dest, ip_mittente, porta_mittente_temp, udpfd, ack);
-              if (!ris) { printf("\n spedizione ack non riuscita \n"); exit (1);}
+              send_ack (dest, ip_mittente, porta_mittente_temp, udpfd, ack);
               printf("%s[ACK]: %d | %c | %d |%s%spkt spedito!%s", VIOLA, ntohl(ack.id), ack.tipo, ntohl(ack.id_pkt), BIANCO, VERDEC, BIANCO);
               info.ack = info.ack + 1;
             }
@@ -215,12 +201,8 @@ int main (int argc, char *argv[]) {
             if (icmpack.id_pkt == RIMANDA) {
 /* #NOTA */
               fine_pkt (pacco, RIMANDA);
-              ris = send_udp (dest, ip_mittente, porta_mittente_temp, udpfd, *pacco);
-              if (!ris) { 
-                printf("[FINE PACK] send_udp(): andata a puttane\n");
-                fflush(stdout);
-                exit(1);
-              }
+              send_udp (dest, ip_mittente, porta_mittente_temp, udpfd, *pacco);
+
             }
 
             if ((icmpack.id_pkt) < RIMANDA) {
@@ -233,8 +215,7 @@ int main (int argc, char *argv[]) {
               ack.tipo = 'B';
               ack.id_pkt = htonl(icmpack.id_pkt);
 
-              ris = send_ack (dest, ip_mittente, porta_mittente_temp, udpfd, ack);
-              if (!ris) { printf("\n spedizione ack non riuscita \n"); exit (1);}
+              send_ack (dest, ip_mittente, porta_mittente_temp, udpfd, ack);
               printf("%spkt rimandato!%s\n", ROSSOC, BIANCO); 
             }
 
@@ -285,44 +266,33 @@ int main (int argc, char *argv[]) {
             ack.tipo = 'B';
             ack.id_pkt = htonl(i);
 
-            ris = send_ack (dest, ip_mittente, porta_mittente_temp, udpfd, ack);
-            if (!ris) { printf("spedizione ack non riuscita"); }
-
+            send_ack (dest, ip_mittente, porta_mittente_temp, udpfd, ack);
+            
             printf("%s[RIMANDA]: %d | %d | %c | %d | %s | %d | %s \n",
             CIANOC, ntohl(ack.id), ntohl(ack.id_pkt), ack.tipo, ntohl(ack.id_pkt), ip_mittente, porta_mittente_temp, BIANCO);
             break;
           }
 
           if (flag_null == 0) {
-
+            /* momento di spezione al destinatario tcp */
             pacco = vett[i];
-            printf("%s[TCP]: %d | %s", BLUC, pacco->id, BIANCO);
+            
             ris = send_tcp (tcpfd, pacco->msg, pacco->msg_size);
-            switch (ris) { 
-              case -2:
+            if (ris == -2) {
+
                 /* se la spedizione non va a buon fine il receiver e' morto. */
                 printf ("%sClient Ricevente ha smesso di esistere! %s\n", ROSSOC, BIANCO);
-              
                 fine_pkt (pacco, RIMANDA);
-                ris = send_udp (dest, ip_mittente, porta_mittente_temp, udpfd, *pacco);
-                if (!ris) { 
-                  printf(" send_udp(): andata a puttane, tcp morto\n");
-                  fflush(stdout);
-                  exit(1);
-                }
-              break;
-
-              case SOCKET_ERROR: printf(" write(): failed.\n"); exit(1);
-              
-              default: 
+                send_udp (dest, ip_mittente, porta_mittente_temp, udpfd, *pacco);
+                
+            }
+            else {
+                printf("%s[TCP]: %d | %d | %s pkt spedito!%s\n", BLUC, pacco->id, ris, VERDEC, BIANCO);
                 free(pacco);
                 vett[i] = NULL;
-                printf("%s| pkt spedito!%s\n", VERDEC, BIANCO);
-                count = count + 1;
-                info.tot = info.tot + ris;
-              break; 
+                count++;
+                info.tot += ris;
             }
-
           }
 
         }

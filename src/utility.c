@@ -1,4 +1,3 @@
-
 #define MSGSIZE 64497 /* lettura del proxysender */
 #define BUFSIZE 65507 /* lettura del proxyreceiver */
 #define RIMANDA  (unsigned int)2000000000 /* piu' 11 tera*/
@@ -71,28 +70,32 @@ uint16_t scegli_door (uint16_t origine, uint16_t old) {
 
 /* INIT SOCKET TCP E UDP*/
 
+void errore (char *msg, int errnum) {
+  
+  errno = errnum;
+  perror(msg);
+  fflush(stdout);
+  exit(1);
+
+}
+
 /* prepara i socket tcp/udp */
-int tcudp_setting (int *sockfd, uint16_t porta, int tipo_sock) {
+void tcudp_setting (int *sockfd, uint16_t porta, int tipo_sock) {
   struct sockaddr_in locale;
   int ris, optval;
   
   /*creazione del socket */
   printf("socket() | ");
-  if ((*sockfd = socket(AF_INET, tipo_sock, 0)) < 0) {
-    perror("socket():errore socket. \n");
-    fflush(stdout);
-    return 0;
-  }
+  if ((*sockfd = socket(AF_INET, tipo_sock, 0)) < 0)  
+    errore("socket():errore socket", errno);
+  
   
   optval = 1;
 
   printf("setsockopt() | ");
   ris = setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&optval, sizeof(optval));
-  if ( ris == ((int)-1)) {
-    perror ("setsockopt(): errore di SO_REUSEADDR. \n");
-    fflush(stdout);
-    return 0;
-  }
+  if ( ris < 0) 
+    errore ("setsockopt(): errore SO_REUSEADDR", errno);
   
   /* preparazione per bind */
   memset(&locale, 0, sizeof(locale));
@@ -101,33 +104,23 @@ int tcudp_setting (int *sockfd, uint16_t porta, int tipo_sock) {
   locale.sin_port = htons(porta);  
   
   printf("bind()\n");
-  if ((ris = bind(*sockfd, (struct sockaddr*) &locale, sizeof(locale))) < 0) {
-    perror("bind(): errore bind. \n");
-    fflush(stdout);
-    return 0;
-  }
-  return 1;
-  
+  if ((ris = bind(*sockfd, (struct sockaddr*) &locale, sizeof(locale))) < 0)
+    errore("bind(): errore bind", errno);
+
 }
 
 /*bloccante*/
 void sblocca (int *sockfd) {
   int flags;
   
-  if ((flags= fcntl(*sockfd, F_GETFL, 0)) <0) {
-    perror("fcntl(F_GETFL): errore fcntl(). \n");
-    fflush(stdout);
-    exit(1);
-  }
+  if ((flags = fcntl(*sockfd, F_GETFL, 0)) <0) 
+    errore("fcntl(F_GETFL): errore fcntl()", errno);
 
   flags |= O_NONBLOCK;
-  if ( fcntl(*sockfd, F_SETFL, flags) < 0) {
-    perror("fcntl(F_SETFL) errore fcntl(). \n");
-    fflush(stdout);
-    exit(1);
-  }
+  if ( fcntl(*sockfd, F_SETFL, flags) < 0)
+    errore("fcntl(F_SETFL) errore fcntl()", errno);
+  
 }
-
 
 
 /* SEZIONE SPEDIZIONE */
@@ -139,42 +132,36 @@ int send_tcp (int sockfd, char *msg, int len) {
   int n = len;
   int i;
   
-  do {
+  while(1) {
     ris = write(sockfd, &msg[conta], n);
     
     /* se la write non spedisce len byte */
     if ((ris != n) && (ris != SOCKET_ERROR)) { 
       conta = conta + ris; /* conta si posiziona a ris byte */
       n = n - ris; /* i byte da spedire diminuiscono di ris */
-      
     }
-  
+
     if (ris == n) {ris = 0; break;} /* se i byte che deve spedire sono uguali a quelli spediti esce */
     
     /* se e' successo un errore grave esce */
     if ((ris < 0) && (errno != 11) && (errno != EINTR) && (errno != EAGAIN)) break;
   
-  }while(1);
-  
-  if(ris == SOCKET_ERROR) {
-
-    if((errno == ECONNRESET) || (errno == EPIPE)) {
-      printf("\nErrore write [morte receiver]: CONNESSIONE INTERROTTA\n");
-      return -2;
-    }
-    else{
-      printf("write() failed: errno %d ", errno);
-      return SOCKET_ERROR;
-    }
   }
 
-  printf (" %d ",(i = (n == len) ? n : (conta + n) ));
-  fflush(stdout);
+  if(ris == SOCKET_ERROR) {
+
+    if((errno == ECONNRESET) || (errno == EPIPE)) 
+      return (-2);
+    else
+      errore("write() failed:", errno);
+  
+  }
+
   return ((i = (n == len) ? n : (conta + n) ));
 }
 
 /* spedisce un pacco udp */
-int send_udp (struct sockaddr_in dest, char *ip_ricevente, unsigned short porta_ricevente, int sockfd, PACCO msg) {
+void send_udp (struct sockaddr_in dest, char *ip_ricevente, unsigned short porta_ricevente, int sockfd, PACCO msg) {
   int ris, addr_size;
 
   /* prepara la sockaddr_in di destinazione */
@@ -186,29 +173,20 @@ int send_udp (struct sockaddr_in dest, char *ip_ricevente, unsigned short porta_
   /* spedisce il messaggio mediante la sendto */
   addr_size = sizeof(struct sockaddr_in);
 
-  B:
   do{
     ris = sendto (sockfd, &msg , sizeof(msg), 0, (struct sockaddr*)&dest, addr_size);
-    if(ris==0) printf("spedizione nulla\n");break;
+    if(ris==sizeof(msg)) break;
     
-    if((ris < 0) && (errno != 11) && (errno != EINTR) && (errno != EAGAIN)) break;
-    printf("ris sendto() = %d\n",ris);
+    if((ris < 0) && (errno != 11) && (errno != EINTR) && (errno != EAGAIN)) 
+      errore("send_udp(): sendto() error", errno);
+
   } while(ris>0);
   
-  if(ris < 0) {
-          if (errno == 11) goto B;
-        printf("sendto() error: errno %d\n", errno);
-    perror(" \n");
-    fflush(stdout);
-    return 0;
-  }
 
-  
-  return 1;
 }
 
 /* spedisce un pacco ACK */
-int send_ack (struct sockaddr_in dest, char *ip_ricevente, unsigned short porta_ricevente, int sockfd, ICMPACK msg) {
+void send_ack (struct sockaddr_in dest, char *ip_ricevente, unsigned short porta_ricevente, int sockfd, ICMPACK msg) {
   int ris, addr_size;
   
   /* prepara la sockaddr_in di destinazione */
@@ -223,42 +201,31 @@ int send_ack (struct sockaddr_in dest, char *ip_ricevente, unsigned short porta_
 
   do{
     ris = sendto (sockfd, &msg , sizeof(msg), 0, (struct sockaddr*)&dest, addr_size);
-    if(ris==0) printf("spedizione nulla\n");break;
-    if((ris<0 && errno!=EINTR)&& (errno!=11)) break;
-    printf("ris sendto() = %d\n",ris);
+    if(ris==sizeof(msg)) break;
+    
+    if((ris<0) && (errno!=EINTR) && (errno!=11))
+      errore("send_ack(): sendto() error", errno);
+    
   } while(ris<0);
   
-  if(ris < 0) {
-    printf("sendto() error\n");
-    return (0);
-  }
-  
-  return 1;
 }
 
 /* spedisce da 1 a n pacchi dal vettore */
-int multi_sendtcp (PACCO* vett[], int inizio, int nfine, struct sockaddr_in dest, char *ip_dest, unsigned short porta_dest, int sockfd, INFO *info) {
+void multi_sendtcp (PACCO* vett[], int inizio, int nfine, struct sockaddr_in dest, char *ip_dest, unsigned short porta_dest, int sockfd, INFO *info) {
   uint16_t porta_temp;
   PACCO *pacco;
-  int i, ris;
+  int i;
   porta_temp = porta_dest;
 
   for (i = inizio; i <= nfine; i++) {
     info->pkt_counter++;      
     pacco = vett[i];
     if (pacco != NULL) {
-      ris = send_udp (dest, ip_dest, porta_dest, sockfd, *pacco);
-      if (!ris) { 
-        printf("send_udp(): andata a puttane\n");
-        fflush(stdout);
-        return (1);
-      }
+      send_udp (dest, ip_dest, porta_dest, sockfd, *pacco);
       porta_temp = scegli_door(porta_dest, porta_temp);
     }
   
-  }
-  return (0);
-        
+  }        
 }
 
 int scan_null(PACCO *vett[], int inizio, int fine) {
