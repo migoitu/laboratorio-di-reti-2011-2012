@@ -1,6 +1,6 @@
 #define MSGSIZE 64497 /* lettura del proxysender */
 #define BUFSIZE 65507 /* lettura del proxyreceiver */
-#define RIMANDA  (unsigned int)2000000000 /* piu' 11 tera*/
+#define RIMANDA  (unsigned int)2000000000 /* piu' 128 tera*/
 #define SOCKET_ERROR   ((int)-1)
 #define IDFINE 0 /* id pacchetto finale */
 #define VECT_SIZE 10000 /* dimensione iniziale vettore */
@@ -123,6 +123,50 @@ void sblocca (int *sockfd) {
 }
 
 
+/* SEZIONE IMPACCHETTAMENTO E SPACCHETTAMENTO */
+
+/* genera una struttura popolata di tipo pacco */
+void pkt_udp(char* buf, int i, int dim_buf, PACCO *pacco) {
+  
+  pacco->id = htonl((uint32_t)i);
+  pacco->tipo = 'B';
+  pacco->ack = 'N';
+  pacco->msg_size = dim_buf;
+  memcpy(pacco->msg, buf, dim_buf);
+
+}
+
+/* ricrea la struttura pacco ricevuta dal buffer */
+void spkt_udp(char *buf, PACCO *pacco) {
+  
+  pacco->id = ntohl(((PACCO*)buf)->id);
+  pacco->tipo = ((PACCO*)buf)->tipo;
+  pacco->ack = ((PACCO*)buf)->ack;
+  pacco->msg_size = ((PACCO*)buf)->msg_size;
+  memcpy(pacco->msg, ((PACCO*)buf)->msg, pacco->msg_size);
+
+}
+ 
+/* spacchetta i pacchetti icmp */
+void spkt_icmpack (char *buf, ICMPACK *pkt) {
+
+  pkt->id = ntohl(((ICMPACK*)buf)->id);
+  pkt->tipo = ((ICMPACK*)buf)->tipo;
+  pkt->id_pkt = ntohl(((ICMPACK*)buf)->id_pkt);
+  
+}
+
+/* spacchetta i pacchetti magic pkt */
+void fine_pkt (PACCO *pack, uint32_t id) {
+  
+  pack->id = htonl((uint32_t)id);
+  pack->tipo = 'B';
+  pack->ack = 'X'; 
+  
+}
+
+
+
 /* SEZIONE SPEDIZIONE */
 
 /* spedisce un pacco tcp */
@@ -218,7 +262,7 @@ void multi_sendtcp (PACCO* vett[], int inizio, int nfine, struct sockaddr_in des
   porta_temp = porta_dest;
 
   for (i = inizio; i <= nfine; i++) {
-    info->pkt_counter++;      
+    info->pkt_counter += 1;      
     pacco = vett[i];
     if (pacco != NULL) {
       send_udp (dest, ip_dest, porta_dest, sockfd, *pacco);
@@ -227,6 +271,7 @@ void multi_sendtcp (PACCO* vett[], int inizio, int nfine, struct sockaddr_in des
   
   }        
 }
+
 
 int scan_null(PACCO *vett[], int inizio, int fine) {
   int i;
@@ -249,7 +294,7 @@ int scan_null(PACCO *vett[], int inizio, int fine) {
   }
   
   return ris;
-  }
+}
 
 void libera_null(PACCO *vett[],int inizio, int fine) {
   int i;
@@ -266,48 +311,3 @@ void libera_null(PACCO *vett[],int inizio, int fine) {
   
   }
 }
-
-/* SEZIONE IMPACCHETTAMENTO E SPACCHETTAMENTO */
-
-/* genera una struttura popolata di tipo pacco */
-void pkt_udp(char* buf, int i, int dim_buf, PACCO *pacco) {
-  
-  pacco->id = htonl((uint32_t)i);
-  pacco->tipo = 'B';
-  pacco->ack = 'N';
-  pacco->msg_size = dim_buf;
-  memcpy(pacco->msg, buf, dim_buf);
-
-}
-
-/* ricrea la struttura pacco ricevuta dal buffer */
-void spkt_udp(char *buf, PACCO *pacco) {
-  
-  pacco->id = ntohl(((PACCO*)buf)->id);
-  pacco->tipo = ((PACCO*)buf)->tipo;
-  pacco->ack = ((PACCO*)buf)->ack;
-  pacco->msg_size = ((PACCO*)buf)->msg_size;
-  memcpy(pacco->msg, ((PACCO*)buf)->msg, pacco->msg_size);
-
-}
- 
-/* spacchetta i pacchetti icmp */
-void spkt_icmpack (char *buf, ICMPACK *pkt) {
-
-  pkt->id = ntohl(((ICMPACK*)buf)->id);
-  pkt->tipo = ((ICMPACK*)buf)->tipo;
-  pkt->id_pkt = ntohl(((ICMPACK*)buf)->id_pkt);
-  
-}
-
-/* spacchetta i pacchetti magic pkt */
-void fine_pkt (PACCO *pack, uint32_t id) {
-  
-  pack->id = htonl((uint32_t)id);
-  pack->tipo = 'B';
-  pack->ack = 'X'; 
-  
-}
-
-
-

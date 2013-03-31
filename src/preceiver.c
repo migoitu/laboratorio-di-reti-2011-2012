@@ -134,7 +134,7 @@ int main (int argc, char *argv[]) {
 
       if(FD_ISSET(udpfd, &reads)) {
 
-        /* e' arrivato un pacco udp, riceve il datagram */
+        /* e' arrivato un datagram udp */
         size_mitt = sizeof(struct sockaddr_in);
         ricevuti = recvfrom (udpfd, buf, BUFSIZE, 0, (struct sockaddr*)&mitt, &size_mitt);
 
@@ -148,7 +148,7 @@ int main (int argc, char *argv[]) {
 
           /* ricezione datagram udp di tipo B */
           if (((PACCO*)buf)->tipo == 'B') {
-            info.pkt_counter = info.pkt_counter + 1;
+            info.pkt_counter += 1;
               
             /* spacchetta il datagram */
             if((pacco = malloc(sizeof(PACCO))) == NULL) {
@@ -161,19 +161,18 @@ int main (int argc, char *argv[]) {
             printf("%s[UDP]: %s | %d | %d | %c | %c | %d | %d |%s\n",
             GIALLO, ip_mittente, porta_mittente_temp, pacco->id, pacco->tipo, pacco->ack, pacco->msg_size, ricevuti, BIANCO);
 
-            /* ricezione pacco finale */
+            /* se ricevuto pacco FINE */
             if (pacco->id == 0) {
 
               idmax = last_pkt = pacco->msg_size;
-
-              printf("%s[MAGIC]: %s | %d | %d | %c | %c | %d | %s",
+              printf("%s[FINE]: %s | %d | %d | %c | %c | %d | %s",
               VERDEC, ip_mittente, porta_mittente_temp, pacco->id, pacco->tipo, pacco->ack, idmax, BIANCO);
 
             }
 
             /* ricezione pacco ordinario con scartamento di pkt gia spediti al receiver */
-
-            if (pacco->id != 0) {  
+            if (pacco->id != 0) {
+              /* spedizione ack */
               ack.id = htonl(pacco->id);
               ack.tipo = 'B';
               ack.id_pkt = htonl(pacco->id);
@@ -182,7 +181,8 @@ int main (int argc, char *argv[]) {
               printf("%s[ACK]: %d | %c | %d |%s%spkt spedito!%s", VIOLA, ntohl(ack.id), ack.tipo, ntohl(ack.id_pkt), BIANCO, VERDEC, BIANCO);
               info.ack = info.ack + 1;
             }
-
+            
+            /* inserimento */
             if (pacco->id >= count){
               printf("%s| pkt inserito!%s\n", VERDEC, BIANCO);
               vett[pacco->id] = pacco;              
@@ -191,11 +191,12 @@ int main (int argc, char *argv[]) {
             }
 
             else printf("%s| pkt ignorato!%s\n",ROSSOC, BIANCO);
+          
           }
 
           /* ricezione datagram di tipo ICMP */
           if (((PACCO*)buf)->tipo == 'I') {
-            
+
             spkt_icmpack (buf, &icmpack);
 
             if (icmpack.id_pkt == RIMANDA) {
@@ -206,7 +207,7 @@ int main (int argc, char *argv[]) {
             }
 
             if ((icmpack.id_pkt) < RIMANDA) {
-              info.icmp = info.icmp + 1;
+              info.icmp += 1;
               /* cambia porta per non riavere un altro icmp */
               porta_mittente_temp = scegli_door(porta_mitt , porta_mittente_temp);
               printf("%s[ICMP]: %d | %c | %d | %s | ", VIOLA, icmpack.id, icmpack.tipo, icmpack.id_pkt,BIANCO);              
