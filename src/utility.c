@@ -3,7 +3,7 @@
 #define RIMANDA  (unsigned int)2000000000 /* piu' 128 tera*/
 #define SOCKET_ERROR   ((int)-1)
 #define IDFINE 0 /* id pacchetto finale */
-#define VECT_SIZE 10000 /* dimensione iniziale vettore */
+#define VECT_SIZE 100000 /* dimensione iniziale vettore */
 
 #define BIANCO "\033[0m" /* colore di default */
 #define GIALLO "\033[22;33m" /* pacchetti da UDP */
@@ -21,7 +21,6 @@
 typedef struct {
   uint32_t id;
   char tipo; /* B = body, I = icmp */
-  char ack; /* N = normal, X = fine */
   int msg_size;
   char msg[MSGSIZE];
   }  __attribute__((packed)) PACCO;
@@ -89,7 +88,6 @@ void tcudp_setting (int *sockfd, uint16_t porta, int tipo_sock) {
   if ((*sockfd = socket(AF_INET, tipo_sock, 0)) < 0)  
     errore("socket():errore socket", errno);
   
-  
   optval = 1;
 
   printf("setsockopt() | ");
@@ -131,7 +129,6 @@ void pkt_udp(char* buf, int i, int dim_buf, PACCO *pacco) {
  
   pacco->id = htonl((uint32_t)i);
   pacco->tipo = 'B';
-  pacco->ack = 'N';
   pacco->msg_size = dim_buf;
   memcpy(pacco->msg, buf, dim_buf);
   
@@ -143,7 +140,6 @@ void spkt_udp(char *buf, PACCO *pacco) {
   
   pacco->id = ntohl(((PACCO*)buf)->id);
   pacco->tipo = ((PACCO*)buf)->tipo;
-  pacco->ack = ((PACCO*)buf)->ack;
   pacco->msg_size = ((PACCO*)buf)->msg_size;
   memcpy(pacco->msg, ((PACCO*)buf)->msg, pacco->msg_size);
 
@@ -155,15 +151,6 @@ void spkt_icmpack (char *buf, ICMPACK *pkt) {
   pkt->id = ntohl(((ICMPACK*)buf)->id);
   pkt->tipo = ((ICMPACK*)buf)->tipo;
   pkt->id_pkt = ntohl(((ICMPACK*)buf)->id_pkt);
-  
-}
-
-/* spacchetta i pacchetti magic pkt */
-void fine_pkt (PACCO *pack, uint32_t id) {
-  
-  pack->id = htonl((uint32_t)id);
-  pack->tipo = 'B';
-  pack->ack = 'X'; 
   
 }
 

@@ -174,8 +174,8 @@ int main(int argc, char *argv[]) {
 
           /* spedizione del pacchetto udp */
           send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *pacco);
-          printf("%s[UDP]: %s | %d | %d | %c | %c | %d | %d %s\n",
-          GIALLO, ip_dest, porta_ricevente_temp, ntohl(pacco->id), pacco->tipo, pacco->ack, pacco->msg_size, (int)sizeof(*pacco), BIANCO);
+          printf("%s[UDP]: %s | %d | %d | %c | %d | %d %s\n",
+          GIALLO, ip_dest, porta_ricevente_temp, ntohl(pacco->id), pacco->tipo, pacco->msg_size, (int)sizeof(*pacco), BIANCO);
           fflush(stdout);
 
           /* inserimento in vett */
@@ -207,15 +207,14 @@ int main(int argc, char *argv[]) {
 
             fine->id = htonl(IDFINE);
             fine->tipo = 'B';
-            fine->ack = 'X';
             fine->msg_size = id-1;
             
             vett[0] = fine;
             
             send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *fine);
 
-            printf("\n%s[FINE]: %s | %d | %d | %c | %c | %d | NULL %s\n",
-            VERDEC , ip_dest, porta_ricevente_temp, ntohl(fine->id), fine->tipo, fine->ack, id-1, BIANCO);
+            printf("\n%s[FINE]: %s | %d | %d | %c | %d | NULL %s\n",
+            VERDEC , ip_dest, porta_ricevente_temp, ntohl(fine->id), fine->tipo, id-1, BIANCO);
             fflush(stdout);
             
             /* chiude il socket con il tcp */
@@ -250,7 +249,7 @@ int main(int argc, char *argv[]) {
               
               /* se receiver non e' piu' attivo */
               if (icmpack.id == RIMANDA) {
-                printf("id: %d | tipo: %c | body: %c\n", ntohl(((PACCO*)ack_buf)->id), ((PACCO*)ack_buf)->tipo, ((PACCO*)ack_buf)->ack);
+                printf("id: %d | tipo: %c | body: %c\n", ntohl(((ICMPACK*)ack_buf)->id), ((ICMPACK*)ack_buf)->tipo, ((ICMPACK*)ack_buf)->id_pkt);
                 printf("\nProxy Receiver ha smesso di esistere!\n");
                 FD_CLR(udpfd,&allset);
                 FD_CLR(tcpfd,&allset);

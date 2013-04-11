@@ -59,7 +59,7 @@ int main (int argc, char *argv[]) {
   ICMPACK icmpack, ack;
   PACCO  *pacco;
   int count = 1;
-  int size = VECT_SIZE + 10000;
+  int size = VECT_SIZE;
   PACCO** vett;
   vett = calloc(size, sizeof(PACCO*));
 
@@ -128,9 +128,13 @@ int main (int argc, char *argv[]) {
     val_select = select(maxfd + 1, &reads, NULL, NULL, &attendi);
 
     if(val_select < 0)  {
+
+      ack.id = htonl(RIMANDA);
+      ack.tipo = 'B';
+      ack.id_pkt = htonl(RIMANDA);
+      send_ack (dest, ip_mittente, porta_mittente_temp, udpfd, ack);
+
       errore("problemi con select", errno);
-      fine_pkt (pacco, RIMANDA);
-      send_udp (dest, ip_mittente, porta_mittente_temp, udpfd, *pacco);
     }
 
     if(val_select > 0) {  
@@ -164,15 +168,15 @@ int main (int argc, char *argv[]) {
             }
             else spkt_udp(buf, pacco);
 
-            printf("%s[UDP]: %s | %d | %d | %c | %c | %d | %d |%s\n",
-            GIALLO, ip_mittente, porta_mittente_temp, pacco->id, pacco->tipo, pacco->ack, pacco->msg_size, ricevuti, BIANCO);
+            printf("%s[UDP]: %s | %d | %d | %c | %d | %d |%s\n",
+            GIALLO, ip_mittente, porta_mittente_temp, pacco->id, pacco->tipo, pacco->msg_size, ricevuti, BIANCO);
 
             /* se ricevuto pacco FINE */
             if (pacco->id == 0) {
 
               idmax = last_pkt = pacco->msg_size;
-              printf("%s[FINE]: %s | %d | %d | %c | %c | %d | %s",
-              VERDEC, ip_mittente, porta_mittente_temp, pacco->id, pacco->tipo, pacco->ack, idmax, BIANCO);
+              printf("%s[FINE]: %s | %d | %d | %c | %d | %s",
+              VERDEC, ip_mittente, porta_mittente_temp, pacco->id, pacco->tipo, idmax, BIANCO);
               
               vett[0] = pacco;
 
