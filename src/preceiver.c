@@ -229,17 +229,15 @@ int main (int argc, char *argv[]) {
 
 
         if (ricevuti<0) {
+
           if(errno==ECONNRESET) {
             perror("recvfrom() failed (ECONNRESET): ");
             fprintf(stderr,"ma non chiudo il socket\n");
             fflush(stderr);
             exit(0);
           }
-          else { 
-            perror("recvfrom() failed: ");
-            fflush(stdout);
-            exit(1);
-          }
+          else errore("recvfrom() failed:", errno);
+
         }
 
       }
