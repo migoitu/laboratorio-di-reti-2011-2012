@@ -143,7 +143,8 @@ int main(int argc, char *argv[]) {
     memcpy(&reads, &allset, sizeof(allset));
     val_select = select(maxfd + 1, &reads, NULL, NULL, &attesa);
 
-
+    if(val_select < 0)  errore("problemi con select", errno);
+    
     /* qualche socket si e' attivato */
     if(val_select > 0) {
 
@@ -343,29 +344,32 @@ int main(int argc, char *argv[]) {
       attesa.tv_usec = 500000;
       finalCountdown++;
 
-      if (counter == 2) {
+      if (primaRicezione == 1) {
 
-        counter = 0;
-        inizio = scan_null (vett, inizio, id-1);
-        multi_sendtcp (vett, inizio, id-1, dest, ip_dest, porta_mittente, udpfd, &info);
+        if (counter == 2) {
 
-        if(fine != NULL) {
+          counter = 0;
+          inizio = scan_null (vett, inizio, id-1);
+          multi_sendtcp (vett, inizio, id-1, dest, ip_dest, porta_mittente, udpfd, &info);
+
+          if(fine != NULL) {
+          
+            send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *fine);
+
+          }
         
-          send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *fine);
-
+        } else counter++;
+        
+        /* dopo 100 secondi finisce l'interazione con il preceiver */
+        if(finalCountdown == 200) {
+          printf("[FINE]: Timeout proxy receiver scaduto!\n");
+          FD_CLR(udpfd,&allset);
+          FD_CLR(tcpfd,&allset);
+          close(udpfd);
+          close(tcpfd);
+          libera_null(vett,0,id);
+          break;
         }
-      
-      } else counter++;
-      
-      /* dopo 100 secondi finisce l'interazione con il preceiver */
-      if(finalCountdown == 200) {
-        printf("[FINE]: Timeout proxy receiver scaduto!\n");
-        FD_CLR(udpfd,&allset);
-        FD_CLR(tcpfd,&allset);
-        close(udpfd);
-        close(tcpfd);
-        libera_null(vett,0,id);
-        break;
       }
     }
   }

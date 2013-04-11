@@ -128,11 +128,13 @@ void sblocca (int *sockfd) {
 /* genera una struttura popolata di tipo pacco */
 void pkt_udp(char* buf, int i, int dim_buf, PACCO *pacco) {
   
+ 
   pacco->id = htonl((uint32_t)i);
   pacco->tipo = 'B';
   pacco->ack = 'N';
   pacco->msg_size = dim_buf;
   memcpy(pacco->msg, buf, dim_buf);
+  
 
 }
 

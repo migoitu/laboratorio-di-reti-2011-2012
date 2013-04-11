@@ -59,8 +59,9 @@ int main (int argc, char *argv[]) {
   ICMPACK icmpack, ack;
   PACCO  *pacco;
   int count = 1;
+  int size = VECT_SIZE + 10000;
   PACCO** vett;
-  vett = calloc(VECT_SIZE, sizeof(PACCO*));
+  vett = calloc(size, sizeof(PACCO*));
 
 
   /* cotrollo sul input */
@@ -126,6 +127,7 @@ int main (int argc, char *argv[]) {
     memcpy(&reads, &allset, sizeof(allset));
     val_select = select(maxfd + 1, &reads, NULL, NULL, &attendi);
 
+    if(val_select < 0)  errore("problemi con select", errno);
 
     if(val_select > 0) {  
       attendi.tv_sec = 0;
@@ -167,6 +169,8 @@ int main (int argc, char *argv[]) {
               idmax = last_pkt = pacco->msg_size;
               printf("%s[FINE]: %s | %d | %d | %c | %c | %d | %s",
               VERDEC, ip_mittente, porta_mittente_temp, pacco->id, pacco->tipo, pacco->ack, idmax, BIANCO);
+              
+              vett[0] = pacco;
 
             }
 
@@ -298,7 +302,7 @@ int main (int argc, char *argv[]) {
 
         }
         /* se pacco spedito = ultimo pacchetto */
-        if ((last_pkt != 0) && (count-1 == last_pkt)) {
+        if ( ((last_pkt != 0) && (count-1 == last_pkt)) || ((vett[0] != NULL) && (vett[0]->id == 0)) ) {
           ack.id = htonl(IDFINE);
           ack.tipo = 'B';
           ack.id_pkt = htonl(IDFINE);
