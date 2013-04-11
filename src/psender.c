@@ -61,7 +61,6 @@ int main(int argc, char *argv[]) {
   PACCO *pacco, *fine = NULL;
   ICMPACK icmpack;
   int primaRicezione, counter, finalCountdown = 0;
-  time_t timer, timer_temp = 0;
   uint32_t id = 1;
   int inizio = 1; /* scansione vettore per rimandare */
   int size = VECT_SIZE;
@@ -148,7 +147,7 @@ int main(int argc, char *argv[]) {
     /* qualche socket si e' attivato */
     if(val_select > 0) {
 
-      attesa.tv_usec = 50000; /* decimo di secondo */
+      attesa.tv_usec = 50000; /* 50 milli secondi */
       counter = 0;
 
       
@@ -170,12 +169,12 @@ int main(int argc, char *argv[]) {
 
           /* popolamento struct */
           pkt_udp(&(buf[0]), id, letti, pacco);
-          printf("%s[TCP]: letto: %d Byte | totale: %d Byte | id: %d |%s\n", BLUC, letti, info.tot, id, BIANCO); 
+          printf("%s[TCP]: letti: %d Byte | tot: %d Byte | id: %d %s\n", BLUC, letti, info.tot, id, BIANCO); 
           fflush(stdout);
 
           /* spedizione del pacchetto udp */
           send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *pacco);
-          printf("%s[UDP]: %s | %d | %d | %c | %c | %d | %d |%s\n",
+          printf("%s[UDP]: %s | %d | %d | %c | %c | %d | %d %s\n",
           GIALLO, ip_dest, porta_ricevente_temp, ntohl(pacco->id), pacco->tipo, pacco->ack, pacco->msg_size, (int)sizeof(*pacco), BIANCO);
           fflush(stdout);
 
@@ -215,7 +214,7 @@ int main(int argc, char *argv[]) {
             
             send_udp(dest, ip_dest, porta_ricevente_temp, udpfd, *fine);
 
-            printf("\n%s[FINE]: %s | %d | %d | %c | %c | %d | NULL |%s\n",
+            printf("\n%s[FINE]: %s | %d | %d | %c | %c | %d | NULL %s\n",
             VERDEC , ip_dest, porta_ricevente_temp, ntohl(fine->id), fine->tipo, fine->ack, id-1, BIANCO);
             fflush(stdout);
             
@@ -234,8 +233,6 @@ int main(int argc, char *argv[]) {
       /* RICEZIONE DA RITARDATORE / PROXY RECEIVER */
       if(FD_ISSET(udpfd, &reads)) {
         
-        /* reset timer */
-        timer = 0;
         
         dim = sizeof(struct sockaddr_in);
         if ((ricevuti = recvfrom (udpfd, ack_buf, 9, 0, (struct sockaddr*)&mitt, &dim)) > 0) {
@@ -252,7 +249,7 @@ int main(int argc, char *argv[]) {
               info.rimanda = info.rimanda + 1;
               
               /* se receiver non e' piu' attivo */
-              if (((PACCO*)ack_buf)->ack == 'X') {
+              if (icmpack.id == RIMANDA) {
                 printf("id: %d | tipo: %c | body: %c\n", ntohl(((PACCO*)ack_buf)->id), ((PACCO*)ack_buf)->tipo, ((PACCO*)ack_buf)->ack);
                 printf("\nProxy Receiver ha smesso di esistere!\n");
                 FD_CLR(udpfd,&allset);
@@ -298,10 +295,11 @@ int main(int argc, char *argv[]) {
               /* altrimenti e' un pacco ACK normale */
               else {
 
-                printf("%s[ACK]: %d | %c | %d %s\n", VIOLA, icmpack.id, icmpack.tipo, icmpack.id_pkt, BIANCO);
+                printf("%s[ACK]: %d | %c | %d | %s", VIOLA, icmpack.id, icmpack.tipo, icmpack.id_pkt, BIANCO);
                 PACCO *p = vett[icmpack.id_pkt];
                 vett[icmpack.id_pkt] = NULL;
                 free(p);
+                printf("%spkt rimosso!%s\n", VERDEC, BIANCO);
               }
             }
           }

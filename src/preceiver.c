@@ -127,7 +127,11 @@ int main (int argc, char *argv[]) {
     memcpy(&reads, &allset, sizeof(allset));
     val_select = select(maxfd + 1, &reads, NULL, NULL, &attendi);
 
-    if(val_select < 0)  errore("problemi con select", errno);
+    if(val_select < 0)  {
+      errore("problemi con select", errno);
+      fine_pkt (pacco, RIMANDA);
+      send_udp (dest, ip_mittente, porta_mittente_temp, udpfd, *pacco);
+    }
 
     if(val_select > 0) {  
       attendi.tv_sec = 0;
@@ -203,13 +207,6 @@ int main (int argc, char *argv[]) {
 
             spkt_icmpack (buf, &icmpack);
 
-            if (icmpack.id_pkt == RIMANDA) {
-/* #NOTA */
-              fine_pkt (pacco, RIMANDA);
-              send_udp (dest, ip_mittente, porta_mittente_temp, udpfd, *pacco);
-
-            }
-
             if ((icmpack.id_pkt) < RIMANDA) {
               info.icmp += 1;
               /* cambia porta per non riavere un altro icmp */
@@ -281,32 +278,24 @@ int main (int argc, char *argv[]) {
             pacco = vett[i];
             
             ris = send_tcp (tcpfd, pacco->msg, pacco->msg_size);
-            if (ris == -2) {
+            
+            printf("%s[TCP]: %d | %d | %s pkt spedito!%s\n", BLUC, pacco->id, ris, VERDEC, BIANCO);
+            free(pacco);
+            vett[i] = NULL;
+            count++;
+            info.tot += ris;
 
-                /* se la spedizione non va a buon fine il receiver e' morto. */
-                printf ("%sClient Ricevente ha smesso di esistere! %s\n", ROSSOC, BIANCO);
-                fine_pkt (pacco, RIMANDA);
-                send_udp (dest, ip_mittente, porta_mittente_temp, udpfd, *pacco);
-                
-            }
-            else {
-                printf("%s[TCP]: %d | %d | %s pkt spedito!%s\n", BLUC, pacco->id, ris, VERDEC, BIANCO);
-                free(pacco);
-                vett[i] = NULL;
-                count++;
-                info.tot += ris;
-            }
           }
 
         }
         /* se pacco spedito = ultimo pacchetto */
-        if ( ((last_pkt != 0) && (count-1 == last_pkt)) || ((vett[0] != NULL) && (vett[0]->id == 0)) ) {
+        if ( ((last_pkt != 0) && (count-1 == last_pkt)) ) {
           ack.id = htonl(IDFINE);
           ack.tipo = 'B';
           ack.id_pkt = htonl(IDFINE);
 
           send_ack (dest, ip_mittente, porta_mittente_temp, udpfd, ack);
-          printf("[MAGIC] pkt %d spedito!\n", ntohl(ack.id_pkt));
+          printf("[FINE] pkt %d spedito!\n", ntohl(ack.id_pkt));
 
           FD_CLR(udpfd,&allset);
           FD_CLR(tcpfd,&allset);

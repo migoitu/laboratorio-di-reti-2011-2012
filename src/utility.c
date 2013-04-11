@@ -195,11 +195,8 @@ int send_tcp (int sockfd, char *msg, int len) {
   }
 
   if(ris == SOCKET_ERROR) {
-
-    if((errno == ECONNRESET) || (errno == EPIPE)) 
-      return (-2);
-    else
-      errore("write() failed:", errno);
+    
+    errore("write() failed:", errno);
   
   }
 
