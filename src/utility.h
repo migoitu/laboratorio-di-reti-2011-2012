@@ -27,6 +27,6 @@ void libera_null(PACCO *vett[],int inizio, int fine)
 void pkt_udp(char* buf, int i, int dim_buf, PACCO *pacco);
 void spkt_udp(char *buf, PACCO *pacco);
 void spkt_icmpack (char *buf, ICMPACK *pkt);
-void fine_pkt (PACCO *pack, uint32_t id);
+
 
 #endif  /*__UTILITY_H_*/

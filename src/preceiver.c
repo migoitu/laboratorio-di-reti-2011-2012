@@ -229,17 +229,11 @@ int main (int argc, char *argv[]) {
         }
 
 
-        if (ricevuti<0) {
+        if (ricevuti<0) 
 
-          if(errno==ECONNRESET) {
-            perror("recvfrom() failed (ECONNRESET): ");
-            fprintf(stderr,"ma non chiudo il socket\n");
-            fflush(stderr);
-            exit(0);
-          }
-          else errore("recvfrom() failed:", errno);
+           errore("recvfrom() failed:", errno);
 
-        }
+        
 
       }
 
@@ -251,8 +245,8 @@ int main (int argc, char *argv[]) {
       if (fine == 1) break;
 
       if (primaRicezione == 1) {
-        attendi.tv_sec = 1;
-        attendi.tv_usec = 0;
+        attendi.tv_sec = 0;
+        attendi.tv_usec = 500000;
         
         info.idmax = idmax;
         
@@ -316,7 +310,7 @@ int main (int argc, char *argv[]) {
 
     /* chiusura */
   info.fin = time(NULL);
-  printf ("\n[INFO]:\n Byte_tr: %d \n pkt_tr: %d \n pkt_rx: %d \n icmp_rx: %d \n ack_tr: %d \n rimanda_tr: %d \n durata: %ld sec \n", 
+  printf ("\n[INFO]:\n Byte Tr: %d \n Pkt Tr: %d \n Pkt Rx: %d \n Icmp Rx: %d \n Ack Tr: %d \n Rimanda Tr: %d \n Durata: %ld sec \n", 
           info.tot ,info.idmax, info.pkt_counter, info.icmp, info.ack, info.rimanda, info.fin-info.ini);
   printf ("grazie e arrivederci . . .\n");
 

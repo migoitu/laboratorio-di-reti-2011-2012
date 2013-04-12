@@ -1,9 +1,9 @@
-#define MSGSIZE 64497 /* lettura del proxysender */
-#define BUFSIZE 65507 /* lettura del proxyreceiver */
+#define MSGSIZE 64498 /* dimensione massimo di un messaggio in un pacchetto */
+#define BUFSIZE 65507 /* dimensione massima del buffer (psender) */
 #define RIMANDA  (unsigned int)2000000000 /* piu' 128 tera*/
 #define SOCKET_ERROR   ((int)-1)
 #define IDFINE 0 /* id pacchetto finale */
-#define VECT_SIZE 100000 /* dimensione iniziale vettore */
+#define VECT_SIZE 100000 /* dimensione del vettore */
 
 #define BIANCO "\033[0m" /* colore di default */
 #define GIALLO "\033[22;33m" /* pacchetti da UDP */
@@ -11,7 +11,7 @@
 #define CIANOC "\033[22;36m" /* pacchetti di RIMANDA */
 #define VIOLA "\033[22;35m" /* pacchetti per ACK, ICMP */
 #define ROSSOC "\033[22;31m" /* NON VA */
-#define VERDEC "\033[22;32m" /* OK , MAGIC PACK  */
+#define VERDEC "\033[22;32m" /* OK , FINE PACK  */
 
 #define MAXAB(A,B) ((A>B) ? (A) : (B))
 
@@ -248,9 +248,10 @@ void multi_sendtcp (PACCO* vett[], int inizio, int nfine, struct sockaddr_in des
   porta_temp = porta_dest;
 
   for (i = inizio; i <= nfine; i++) {
-    info->pkt_counter += 1;      
+
     pacco = vett[i];
     if (pacco != NULL) {
+      info->pkt_counter += 1;     
       send_udp (dest, ip_dest, porta_dest, sockfd, *pacco);
       porta_temp = scegli_door(porta_dest, porta_temp);
     }

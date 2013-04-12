@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
     /* qualche socket si e' attivato */
     if(val_select > 0) {
 
-      attesa.tv_usec = 50000; /* 50 milli secondi */
+      attesa.tv_usec = 20000; /* 50 milli secondi */
       counter = 0;
 
       
@@ -185,6 +185,12 @@ int main(int argc, char *argv[]) {
           /* incremento id */
           info.idmax = id;
           id = id + 1;
+          
+          /* controllo dimensione dati */
+          if (id > VECT_SIZE) {
+            printf("errore, ricevuto dati piu' grandi della capienza max!!!!");
+            exit(1);
+          }
         }
 
 
@@ -372,10 +378,10 @@ int main(int argc, char *argv[]) {
   }
   
   info.fin = time(NULL);
-  printf ("\n[INFO]:\n Totale byte rx: %d \n Pacchetti tr: %d \n Icmp rx: %d \n Ack rx: %d \n Rimanda rx: %d \n Durata: %ld sec \n Totale pkt multisend: %d \n", 
+  printf ("\n[INFO]:\n Byte Rx: %d \n Pacchi Tr: %d \n Icmp Rx: %d \n Ack Rx: %d \n Rimanda Rx: %d \n Durata: %ld sec \n Pkt Multisend Tr: %d \n", 
           info.tot ,info.idmax,info.icmp, info.ack, info.rimanda, info.fin-info.ini, info.pkt_counter);
   close(tcpfd);
-  printf ("close() grazie e arriverci . . . \n");
+  printf ("grazie e arriverci . . . \n");
   return(0);
 
 }
