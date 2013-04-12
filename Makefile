@@ -32,6 +32,12 @@ psender:	psender.o
 
 ## Pulizia di tutti i file generati dalla compilazione e dal linking
 clean:
-	rm -f *.o
-	rm -f preceiver psender
+	rm -rf *.o
+	rm -rf preceiver psender
+	rm -rf docs/html/*
+	rm -rf docs/latex/*
 	cd $(RIT)/; make clean
+	
+## Creazione della documentazione tramite Doxygen
+doc:
+		doxygen doxydoc

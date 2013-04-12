@@ -19,6 +19,7 @@
 #define PORTA_LOCALE_TCP 59000
 #define PORTA_LOCALE_UDP 60000
 #define PORTA_DEST 61000
+#define MULTISEND 2 /* essendo 100ms di default multisend = 200ms */
 
 int main(int argc, char *argv[]) {
 
@@ -147,7 +148,7 @@ int main(int argc, char *argv[]) {
     /* qualche socket si e' attivato */
     if(val_select > 0) {
 
-      attesa.tv_usec = 20000; /* 50 milli secondi */
+      attesa.tv_usec = 40000; /* 40 milli secondi */
       counter = 0;
 
       
@@ -155,11 +156,12 @@ int main(int argc, char *argv[]) {
       if(FD_ISSET(newtcpfd, &reads)) {
         primaRicezione = 1;
         
+        /* ricezione dal receiver */
         if ((letti = recv(newtcpfd, &buf, MSGSIZE, 0 )) >0) {
 
           info.tot += letti;
 
-          /* creazione la struct di tipo lista che conterra' il pkt udp */
+          /* creazione la struct di tipo pacco che conterra' il pkt udp */
           pacco = malloc(sizeof(PACCO));
           if(pacco == NULL) {
             perror("malloc(): fallita\n");
@@ -202,7 +204,7 @@ int main(int argc, char *argv[]) {
           /* se legge 0 significa che il sender non esiste piu quindi avvisa il proxyreceiver della fine */
           if (letti == 0) {
 
-            /* prepara la struttura, lo popola di info e lo inserisce in lista */
+            /* prepara un pacchetto speciale e lo manda al preceiver */
             
             fine = malloc(sizeof(PACCO));
             if(fine == NULL) {
@@ -211,7 +213,7 @@ int main(int argc, char *argv[]) {
               exit (1);
             }
 
-            fine->id = htonl(IDFINE);
+            fine->id = htonl(IDFINE); /* id fine = 0 */
             fine->tipo = 'B';
             fine->msg_size = id-1;
             
@@ -245,7 +247,6 @@ int main(int argc, char *argv[]) {
           spkt_icmpack (ack_buf, &icmpack);
 
           /* MESSAGGI DA PROXYRECEIVER */
-
           if (icmpack.tipo == 'B') {
             finalCountdown = 0;
 
@@ -253,10 +254,10 @@ int main(int argc, char *argv[]) {
             if (icmpack.id >= RIMANDA) {
               info.rimanda = info.rimanda + 1;
               
-              /* se receiver non e' piu' attivo */
+              /* se preceiver non e' piu' attivo */
               if (icmpack.id == RIMANDA) {
                 printf("id: %d | tipo: %c | body: %c\n", ntohl(((ICMPACK*)ack_buf)->id), ((ICMPACK*)ack_buf)->tipo, ((ICMPACK*)ack_buf)->id_pkt);
-                printf("\nProxy Receiver ha smesso di esistere!\n");
+                printf("\nPreceiver ha smesso di esistere!\n");
                 FD_CLR(udpfd,&allset);
                 FD_CLR(tcpfd,&allset);
                 close(udpfd); 
@@ -264,7 +265,6 @@ int main(int argc, char *argv[]) {
                 libera_null(vett,0,id);
                 break;
               }
-
 
               else {
                 printf ("%s[RIMANDA]: %d | %c | %d | %s",
@@ -279,6 +279,7 @@ int main(int argc, char *argv[]) {
                   else printf ("%spkt gia consegnato!%s\n",ROSSOC, BIANCO);
                 }
               }
+              
             }
             
             
@@ -289,6 +290,7 @@ int main(int argc, char *argv[]) {
               /* se l'id del ACK e' lo stesso id di fine */
               if (icmpack.id_pkt == IDFINE) {
 
+                /* il preceiver ha finito di spedire tutto il messaggio che ha ricevuto il psender */
                 printf("\n%s[FINE]: %d | %c | %d %s\n", VERDEC, icmpack.id, icmpack.tipo, icmpack.id_pkt, BIANCO);
                 FD_CLR(udpfd,&allset);
                 FD_CLR(tcpfd,&allset);
@@ -296,15 +298,17 @@ int main(int argc, char *argv[]) {
                 close(tcpfd);
                 libera_null(vett,0,id);
                 break;
+              
               }
-              /* altrimenti e' un pacco ACK normale */
+              /* altrimenti e' un pacco ACK normale quindi lo rimuove dal vettore */
               else {
-
+                
                 printf("%s[ACK]: %d | %c | %d | %s", VIOLA, icmpack.id, icmpack.tipo, icmpack.id_pkt, BIANCO);
                 PACCO *p = vett[icmpack.id_pkt];
                 vett[icmpack.id_pkt] = NULL;
                 free(p);
                 printf("%spkt rimosso!%s\n", VERDEC, BIANCO);
+              
               }
             }
           }
@@ -344,12 +348,12 @@ int main(int argc, char *argv[]) {
     /* reparto spedizione pacchi */
     if(val_select == 0){
 
-      attesa.tv_usec = 500000;
+      attesa.tv_usec = 100000;
       finalCountdown++;
 
       if (primaRicezione == 1) {
 
-        if (counter == 2) {
+        if (counter == MULTISEND) {
 
           counter = 0;
           inizio = scan_null (vett, inizio, id-1);

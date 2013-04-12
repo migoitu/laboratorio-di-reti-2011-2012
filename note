@@ -1,8 +1,0 @@
-proxysender
-	segmentatio fault quando sender si connette in chat senza msg
-
-	correzione valore di RIMANDA
-	
-	ricreazione vettore max dim 2 miliardi
-
-	rimozione da PACCO elemento ack

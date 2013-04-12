@@ -172,7 +172,7 @@ int main (int argc, char *argv[]) {
             GIALLO, ip_mittente, porta_mittente_temp, pacco->id, pacco->tipo, pacco->msg_size, ricevuti, BIANCO);
 
             /* se ricevuto pacco FINE */
-            if (pacco->id == 0) {
+            if (pacco->id == IDFINE) {
 
               idmax = last_pkt = pacco->msg_size;
               printf("%s[FINE]: %s | %d | %d | %c | %d | %s",
@@ -246,7 +246,7 @@ int main (int argc, char *argv[]) {
 
       if (primaRicezione == 1) {
         attendi.tv_sec = 0;
-        attendi.tv_usec = 500000;
+        attendi.tv_usec = 400000;
         
         info.idmax = idmax;
         
